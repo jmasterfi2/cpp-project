@@ -1,84 +1,177 @@
-#include <SDL3/SDL_main.h>
 #include <SDL3/SDL.h>
-#include <stdio.h>
+#include <SDL3_image/SDL_image.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #define SDL_FLAGS SDL_INIT_VIDEO
-/*
-struct GAME {
-	SDL_Window* window;// =// SDL_CreateWindow("title", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, SDL_EVENT_WINDOW_SHOWN);
-	SDL_Renderer* renderer;// = SDL_CreateRenderer(window, -1, 0);
+
+#define WINDOW_TITLE "Background and Icon"
+#define WINDOW_WIDTH 800
+#define WINDOW_HEIGHT 600
+
+struct Game {
+        SDL_Window *window;
+        SDL_Renderer *renderer;
+        SDL_Texture *background;
+        SDL_Event event;
+        bool is_running;
 };
-*/
 
-bool game_init_sdl();
-void game_free();
+bool game_init_sdl(struct Game *g);
+bool game_new(struct Game **game);
+void game_free(struct Game **game);
+void game_events(struct Game *g);
+void game_draw(struct Game *g);
+void game_run(struct Game *g);
 
-bool game_init_sdl() {
-	if (!SDL_Init(SDL_FLAGS)) {
-		fprintf(stderr, "Error initializing SDL3: %s/n", SDL_GetError());
-		return false;
-	}
-	return true;
+bool game_init_sdl(struct Game *g) {
+    if (!SDL_Init(SDL_FLAGS)) {
+        fprintf(stderr, "Error initializing SDL3: %s\n", SDL_GetError());
+        return false;
+    }
+
+    g->window = SDL_CreateWindow(WINDOW_TITLE, WINDOW_WIDTH, WINDOW_HEIGHT, 0);
+    if (!g->window) {
+        fprintf(stderr, "Error creating Window: %s\n", SDL_GetError());
+        return false;
+    }
+
+    g->renderer = SDL_CreateRenderer(g->window, NULL);
+    if (!g->renderer) {
+        fprintf(stderr, "Error creating Renderer: %s\n", SDL_GetError());
+        return false;
+    }
+
+    SDL_Surface *icon_surf = IMG_Load("images/C-logo.png");
+    if (!icon_surf) {
+        fprintf(stderr, "Error loading Surface: %s\n", SDL_GetError());
+        return false;
+    }
+
+    if (!SDL_SetWindowIcon(g->window, icon_surf)) {
+        fprintf(stderr, "Error setting Window Icond: %s\n", SDL_GetError());
+        SDL_DestroySurface(icon_surf);
+        return false;
+    }
+    SDL_DestroySurface(icon_surf);
+
+    return true;
 }
 
-void game_free(){
-	SDL_Quit();
-	}
+bool game_load_media(struct Game *g) {
+    g->background = IMG_LoadTexture(g->renderer, "images/background.png");
+    if (!g->background) {
+        fprintf(stderr, "Error loading Texture: %s\n", SDL_GetError());
+        return false;
+    }
 
+    return true;
+}
+
+bool game_new(struct Game **game) {
+    *game = (struct Game)calloc(1, sizeof(struct Game));
+    if (*game == NULL) {
+        fprintf(stderr, "Error Calloc of New Game.\n");
+        return false;
+    }
+    struct Game *g = *game;
+
+    if (!game_init_sdl(g)) {
+        return false;
+    }
+
+    if (!game_load_media(g)) {
+        return false;
+    }
+
+    g->is_running = true;
+
+    return true;
+}
+
+void game_free(struct Game **game) {
+    if (*game) {
+        struct Game *g = *game;
+
+        if (g->background) {
+            SDL_DestroyTexture(g->background);
+            g->background = NULL;
+        }
+
+        if (g->renderer) {
+            SDL_DestroyRenderer(g->renderer);
+            g->renderer = NULL;
+        }
+        if (g->window) {
+            SDL_DestroyWindow(g->window);
+            g->window = NULL;
+        }
+
+        SDL_Quit();
+
+        free(g);
+
+        g = NULL;
+        *game = NULL;
+
+        printf("All Clean!\n");
+    }
+}
+
+void game_events(struct Game *g) {
+    while (SDL_PollEvent(&g->event)) {
+        switch (g->event.type) {
+        case SDL_EVENT_QUIT:
+            g->is_running = false;
+            break;
+        case SDL_EVENT_KEY_DOWN:
+            switch (g->event.key.scancode) {
+            case SDL_SCANCODE_ESCAPE:
+                g->is_running = false;
+                break;
+            default:
+                break;
+            }
+            break;
+        default:
+            break;
+        }
+    }
+}
+
+void game_draw(struct Game *g) {
+    SDL_RenderClear(g->renderer);
+
+    SDL_RenderTexture(g->renderer, g->background, NULL, NULL);
+
+    SDL_RenderPresent(g->renderer);
+}
+
+void game_run(struct Game *g) {
+    while (g->is_running) {
+        game_events(g);
+
+        game_draw(g);
+
+        SDL_Delay(16);
+    }
+}
 
 int main(void) {
-	bool exit_status = EXIT_FAILURE;
+    bool exit_status = EXIT_FAILURE;
 
-	if (game_init_sdl()) {
-		exit_status = EXIT_SUCCESS;
-	}
+    struct Game *game = NULL;
 
-	game_free();
+    if (game_new(&game)) {
+        game_run(game);
 
-	return exit_status;
+        exit_status = EXIT_SUCCESS;
+    }
+
+    game_free(&game);
+
+    return exit_status;
 }
-
-/*1>------ Build started: Project: life_pol_sim, Configuration: Debug x64 ------
-1 > learn.obj : error LNK2019 : unresolved external symbol SDL_main referenced in function wWinMain
-1 > Hint on symbols that are defined and could potentially match :
-1 > "int __cdecl SDL_main(void)" (? SDL_main@@YAHXZ)
-1 > E:\cpp_project\life_pol_sim\x64\Debug\life_pol_sim.exe : fatal error LNK1120 : 1 unresolved externals
-1 > Done building project "life_pol_sim.vcxproj" --FAILED.
-*/
-
-testddxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx// TEST CHANGE - Mon Jun  2 00:39:22 EDT 2025
-// TEST CHANGE - Mon Jun  2 00:46:56 EDT 2025
-// Test Mon Jun  2 01:12:03 EDT 2025
-// Test Mon Jun  2 01:14:05 EDT 2025
-// Test Mon Jun  2 01:19:20 EDT 2025
-// Test at Mon Jun  2 01:29:56 EDT 2025
-// GitHub Test 01:53:56
-
-// Final Test 02:09:26
-
-// Final Test 02:10:42
-
-// Final Test 02:14:52
-
-// Final Test 02:36:27
-
-// Final Test 02:36:45
-
-// Final Test 02:36:48
-
-// Final Test 02:36:50
-
-// Final Test 02:36:53
-// Test 2025-06-02 02:42:46
-// Test 2025-06-02 02:43:07
-// Test 2025-06-02 02:43:33
-// Test 2025-06-02 02:54:23
-// Test 2025-06-02 03:01:11
-// Test 2025-06-02 03:07:05
-// Test 2025-06-02 03:18:45
-// Test 2025-06-02 03:19:30
-// Test 2025-06-02 03:26:19
 // Test 2025-06-02 03:26:21
 // Test 2025-06-02 03:26:22
