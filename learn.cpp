@@ -70,7 +70,7 @@ bool game_load_media(struct Game *g) {
 }
 
 bool game_new(struct Game **game) {
-    *game = (struct Game)calloc(1, sizeof(struct Game));
+    *game = (struct Game*)calloc(1, sizeof(struct Game));
     if (*game == NULL) {
         fprintf(stderr, "Error Calloc of New Game.\n");
         return false;
